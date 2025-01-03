@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>註冊頁</title>
+</head>
+<body>
+<label>帳號<input id="username"></label>
+<label>密碼<input id="password" type="password"></label>
+<button id="btn">申請</button>
+<script>
+    btn.addEventListener('click', async () => {
+            const res = await fetch("/public/signup", {
+                method: "POST",
+                headers: new Headers({"Content-Type": "application/json",}),
+                body: JSON.stringify({username: username.value, password: password.value})
+            });
+            const text = await res.text();
+            alert(text);
+        }
+    );
+</script>
+</body>
+</html>
