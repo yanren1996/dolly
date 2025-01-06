@@ -1,6 +1,7 @@
 package com.example.dolly.service;
 
-import com.example.dolly.entity.UserEntity;
+import com.example.dolly.model.vo.UserVo;
+import com.example.dolly.model.entity.UserEntity;
 import com.example.dolly.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.User;
@@ -9,6 +10,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.provisioning.UserDetailsManager;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -60,5 +62,11 @@ public class UserService implements UserDetailsManager {
     @Override
     public boolean userExists(String username) {
         return userRepository.existsById(username);
+    }
+
+    // 以下是一般的Service功能
+
+    public List<UserVo> getUserList(){
+        return userRepository.findAllBy(UserVo.class);
     }
 }

@@ -1,4 +1,4 @@
-package com.example.dolly.entity;
+package com.example.dolly.model.entity;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
