@@ -1,0 +1,76 @@
+/* 容器 */
+.container {
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+}
+
+/* 左側列表 */
+.left-bar {
+    width: 15rem;
+    background-color: #f4f4f4;
+    border-right: 1px solid #ccc;
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-list {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.chat-list-item {
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+    cursor: pointer;
+    transition: background-color .3s ease;
+}
+
+.chat-list-item:hover {
+    background-color: #8888f3;
+}
+
+.current-user {
+    border-top: 2px solid #222222;
+}
+
+/* 右側聊天窗 */
+.chat-window {
+    display: flex;
+    flex-direction: column;
+    flex: auto;
+    background-color: white;
+}
+
+.chat-top-bar {
+    background-color: #c2e0ff;
+    border-bottom: 2px solid #555;
+}
+
+.chat-history {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.message {
+    display: flex;
+    flex-direction: row;
+}
+
+.message.me {
+    flex-direction: row-reverse;
+}
+
+.message-text {
+    border: 1px solid #888888;
+    border-radius: 5px;
+
+    max-width: 15em;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.message-status {
+    display: flex;
+    flex-direction: column-reverse;
+}

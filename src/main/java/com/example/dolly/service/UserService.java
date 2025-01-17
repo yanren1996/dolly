@@ -66,7 +66,7 @@ public class UserService implements UserDetailsManager {
 
     // 以下是一般的Service功能
 
-    public List<UserVo> getUserList(){
-        return userRepository.findAllBy(UserVo.class);
+    public List<UserVo> getOthersUsersList(String username){
+        return userRepository.findByUsernameNot(username, UserVo.class);
     }
 }

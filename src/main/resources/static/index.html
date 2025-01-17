@@ -3,8 +3,150 @@
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
+    <!-- 一個清理瀏覽器預設樣式的樣式表 -->
+    <link href="https://unpkg.com/sanitize.css" rel="stylesheet"/>
+    <link href="css/index.css" rel="stylesheet">
 </head>
 <body>
-<h1>hello world</h1>
+<div class="container">
+    <div class="left-bar">
+        <div class="chat-list" id="chatList"></div>
+        <div class="current-user">
+            <p>你是:<span id="self"></span><a href="/logout">登出</a></p>
+        </div>
+    </div>
+    <div class="chat-window">
+        <button id="load">加載舊訊息</button>
+        <div class="chat-top-bar">
+            <p>與<span id="targetUserName"></span>的聊天室</p>
+        </div>
+        <div class="chat-history">
+            <div id="chatHistory"></div>
+            <div id="waitDiv" class="waitMsg"></div>
+        </div>
+        <div class="chat-control">
+            <input id="inputBox">
+            <button id="sendBtn">發送</button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7.0.0/bundles/stomp.umd.min.js"></script>
+<script src="js/api.js"></script>
+<script src="js/render.js"></script>
+<script>
+    // 登入的用戶
+    let selfId;
+    // 目前開啟的聊天室對象
+    let activeChatUserId;
+
+    // 記憶體 聊天快取
+    let chatCache = {}
+    // 還沒從伺服器回來的訊息
+    let waitMessage = []
+
+    // 初始化，取得所有用戶&自己
+    async function initUserList(username) {
+        selfId = username;
+        self.innerText = username;
+
+        const userList = await api.getAllUser();
+        userList.forEach(i => {
+            chatList.appendChild(render.genChatListItem(i.username, e => {
+                changeChatroom(i.username);
+            }));
+        });
+    }
+
+    function changeChatroom(username) {
+        // 檢查是不是點到同一個人聊天室
+        if (activeChatUserId !== username) {
+            activeChatUserId = username;
+            targetUserName.innerText = username;
+            //清理並更新 聊天框&輸入框
+            render.history(chatCache[username], selfId);
+        }
+    }
+
+    load.addEventListener('click', () => {
+        const activeChatUserIdTmp = activeChatUserId;
+        function handler(historyVo){
+            historyVo.content.sort((a, b) => a.seq - b.seq);
+            chatCache[activeChatUserIdTmp] = [...historyVo.content, ...chatCache[activeChatUserIdTmp]];
+            render.history(chatCache[activeChatUserIdTmp], selfId);
+        }
+        if (!chatCache[activeChatUserIdTmp]) {
+            chatCache[activeChatUserIdTmp] = [];
+            api.getChatHistory(activeChatUserId).then(handler);
+        } else {
+            api.getChatHistory(activeChatUserId, chatCache[activeChatUserIdTmp][0].seq).then(handler);
+        }
+    });
+
+
+    // ws 區
+    const client = new StompJs.Client({
+        brokerURL: `ws://${window.location.host}/stomp`,
+        onConnect: (frame) => {
+            initUserList(frame.headers['user-name']);
+
+            // 收到新訊息
+            client.subscribe('/user/queue/private', message => {
+                const messageVo = JSON.parse(message.body);
+                if (!chatCache[messageVo.sender]) {
+                    chatCache[messageVo.sender] = []
+                }
+                chatCache[messageVo.sender] = [...chatCache[messageVo.sender], messageVo];
+
+                if (messageVo.sender === activeChatUserId) {
+                    const nextMsg = render.genMessage(messageVo)
+                    chatHistory.appendChild(nextMsg);
+                    nextMsg.scrollIntoView({behavior: 'smooth', block: 'end'});
+                }
+            });
+            // 伺服器回執
+            client.subscribe('/user/queue/return', message => {
+                const messageVo = JSON.parse(message.body);
+                const returnId = message.headers['uuid'];
+                const waitObj = waitMessage.find(i => i.sendId === returnId);
+                if (!chatCache[waitObj.receiverId]) {
+                    chatCache[waitObj.receiverId] = []
+                }
+                chatCache[waitObj.receiverId] = [...chatCache[waitObj.receiverId], messageVo];// 新增
+                waitMessage = waitMessage.filter(i => i.sendId !== returnId)// 移除
+
+                if (waitObj.receiverId === activeChatUserId) {
+                    const delMsg = document.getElementById(returnId);
+                    delMsg.remove();
+
+                    const nextMsg = render.genMessage(messageVo, selfId);
+                    chatHistory.appendChild(nextMsg);
+                    nextMsg.scrollIntoView({behavior: 'smooth', block: 'end'});
+                }
+            })
+        },
+    });
+    client.activate();
+
+    sendBtn.addEventListener('click', () => {
+        const msgDto = {
+            sendId: crypto.randomUUID(),
+            receiverId: activeChatUserId,
+            type: 'TEXT',
+            content: inputBox.value,
+        }
+        inputBox.value = '';
+
+        waitMessage.push(msgDto);
+        const nextWait = render.genWaitMessage(msgDto);
+        waitDiv.appendChild(nextWait);
+        waitDiv.scrollIntoView({behavior: 'smooth', block: 'end'});
+
+        client.publish({
+            destination: '/app/send',
+            body: JSON.stringify(msgDto)
+        });
+    });
+</script>
 </body>
 </html>
