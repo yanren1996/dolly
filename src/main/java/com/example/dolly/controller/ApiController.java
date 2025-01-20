@@ -1,5 +1,6 @@
 package com.example.dolly.controller;
 
+import com.example.dolly.config.StompOnline;
 import com.example.dolly.model.vo.HistoryVo;
 import com.example.dolly.model.vo.UserVo;
 import com.example.dolly.service.ChatService;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api")
@@ -22,6 +24,9 @@ public class ApiController {
 
     @Autowired
     ChatService chatService;
+
+    @Autowired
+    private StompOnline stompOnline;
 
     @GetMapping("/get-others-users")
     public List<UserVo> getOthersUsers(Authentication auth) {
@@ -37,5 +42,10 @@ public class ApiController {
     public String getChatRoom(Authentication auth) {
         chatService.getAllChatRoom(auth.getName());
         return "";
+    }
+
+    @GetMapping("get-online")
+    public Set<String> getOnline() {
+        return stompOnline;
     }
 }

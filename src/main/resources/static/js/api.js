@@ -21,4 +21,9 @@ const api = {
         return await res.json();
     },
 
+    async getOnline(){
+        const res = await fetch('api/get-online');
+        return await res.json();
+    },
+
 }

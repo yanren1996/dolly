@@ -37,12 +37,16 @@ const render = {
     genChatListItem(username, handleClick){
         const item = document.createElement('div');
         item.classList.add('chat-list-item');
+        item.id = username;
         item.addEventListener('click', e =>{
             // changeChatroom(username);
             handleClick(e);
         })
+        const status = document.createElement('span');
+        status.innerText = '•';
         const name = document.createElement('p');
         name.innerText = username;
+        item.appendChild(status);
         item.appendChild(name);
         return item;
     },

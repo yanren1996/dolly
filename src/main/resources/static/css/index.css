@@ -26,6 +26,10 @@
     transition: background-color .3s ease;
 }
 
+.chat-list-item.online > span {
+    color: chartreuse;
+}
+
 .chat-list-item:hover {
     background-color: #8888f3;
 }

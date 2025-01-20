@@ -12,7 +12,7 @@
     <div class="left-bar">
         <div class="chat-list" id="chatList"></div>
         <div class="current-user">
-            <p>你是:<span id="self"></span><a href="/logout">登出</a></p>
+            <p>你是:<span id="self_e"></span><a href="/logout">登出</a></p>
         </div>
     </div>
     <div class="chat-window">
@@ -48,7 +48,7 @@
     // 初始化，取得所有用戶&自己
     async function initUserList(username) {
         selfId = username;
-        self.innerText = username;
+        self_e.innerText = username;
 
         const userList = await api.getAllUser();
         userList.forEach(i => {
@@ -56,6 +56,12 @@
                 changeChatroom(i.username);
             }));
         });
+        const onlineUser = await api.getOnline();
+        onlineUser
+            .filter(i => i !== selfId)
+            .forEach(i => {
+                document.getElementById(i).classList.add('online');
+            })
     }
 
     function changeChatroom(username) {
@@ -70,11 +76,13 @@
 
     load.addEventListener('click', () => {
         const activeChatUserIdTmp = activeChatUserId;
-        function handler(historyVo){
+
+        function handler(historyVo) {
             historyVo.content.sort((a, b) => a.seq - b.seq);
             chatCache[activeChatUserIdTmp] = [...historyVo.content, ...chatCache[activeChatUserIdTmp]];
             render.history(chatCache[activeChatUserIdTmp], selfId);
         }
+
         if (!chatCache[activeChatUserIdTmp]) {
             chatCache[activeChatUserIdTmp] = [];
             api.getChatHistory(activeChatUserId).then(handler);
@@ -123,7 +131,19 @@
                     chatHistory.appendChild(nextMsg);
                     nextMsg.scrollIntoView({behavior: 'smooth', block: 'end'});
                 }
-            })
+            });
+            client.subscribe('/queue/event', message => {
+                switch (message.headers['type']) {
+                    case 'Connected' :
+                        document.getElementById(message.body).classList.add('online');
+                        console.log(message.body + "上線了");
+                        break;
+                    case 'Disconnect':
+                        document.getElementById(message.body).classList.remove('online');
+                        console.log(message.body + "離線了");
+                        break;
+                }
+            });
         },
     });
     client.activate();
