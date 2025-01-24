@@ -16,11 +16,11 @@
         </div>
     </div>
     <div class="chat-window">
-        <button id="load">加載舊訊息</button>
         <div class="chat-top-bar">
             <p>與<span id="targetUserName"></span>的聊天室</p>
         </div>
-        <div class="chat-history">
+        <div id="history_e" class="chat-history">
+            <div id="loadTag" hidden>加載中...</div>
             <div id="chatHistory"></div>
             <div id="waitDiv" class="waitMsg"></div>
         </div>
@@ -34,16 +34,15 @@
 <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7.0.0/bundles/stomp.umd.min.js"></script>
 <script src="js/api.js"></script>
 <script src="js/render.js"></script>
+<script src="js/tool.js"></script>
 <script>
     // 登入的用戶
     let selfId;
     // 目前開啟的聊天室對象
     let activeChatUserId;
 
-    // 記憶體 聊天快取
-    let chatCache = {}
     // 還沒從伺服器回來的訊息
-    let waitMessage = []
+    let waitMessage = [];
 
     // 初始化，取得所有用戶&自己
     async function initUserList(username) {
@@ -70,27 +69,42 @@
             activeChatUserId = username;
             targetUserName.innerText = username;
             //清理並更新 聊天框&輸入框
-            render.history(chatCache[username], selfId);
+            render.history(tool.getCache(username), selfId);
+            // 加載舊訊息
+            history_e.dispatchEvent(new Event('scroll'));
         }
     }
 
-    load.addEventListener('click', () => {
+    function loadOld() {
+        loadTag.hidden = false;
+        loadTag.scrollIntoView();
         const activeChatUserIdTmp = activeChatUserId;
+        const oldHeight = history_e.scrollHeight;
 
         function handler(historyVo) {
-            historyVo.content.sort((a, b) => a.seq - b.seq);
-            chatCache[activeChatUserIdTmp] = [...historyVo.content, ...chatCache[activeChatUserIdTmp]];
-            render.history(chatCache[activeChatUserIdTmp], selfId);
+            if(!historyVo.hasNext) {
+                tool.complete(activeChatUserIdTmp);
+            }
+            tool.addMsg(activeChatUserIdTmp, historyVo.content);
+            render.history(tool.getCache(activeChatUserIdTmp), selfId);
+            loadTag.hidden = true;
+            history_e.scrollTop = history_e.scrollHeight - oldHeight;
+            if(history_e.clientHeight >= history_e.scrollHeight && !tool.isCompleted(activeChatUserIdTmp)){
+                loadOld();
+            }
         }
 
-        if (!chatCache[activeChatUserIdTmp]) {
-            chatCache[activeChatUserIdTmp] = [];
+        if(tool.getCache(activeChatUserIdTmp).length === 0){
             api.getChatHistory(activeChatUserId).then(handler);
-        } else {
-            api.getChatHistory(activeChatUserId, chatCache[activeChatUserIdTmp][0].seq).then(handler);
+        }else {
+            api.getChatHistory(activeChatUserId, tool.getCache(activeChatUserIdTmp)[0].seq).then(handler);
+        }
+    }
+    history_e.addEventListener('scroll', e => {
+        if (history_e.scrollTop === 0 && loadTag.hidden && !tool.isCompleted(activeChatUserId)) {
+            loadOld();
         }
     });
-
 
     // ws 區
     const client = new StompJs.Client({
@@ -101,10 +115,7 @@
             // 收到新訊息
             client.subscribe('/user/queue/private', message => {
                 const messageVo = JSON.parse(message.body);
-                if (!chatCache[messageVo.sender]) {
-                    chatCache[messageVo.sender] = []
-                }
-                chatCache[messageVo.sender] = [...chatCache[messageVo.sender], messageVo];
+                tool.addMsg(messageVo.sender, [messageVo]);
 
                 if (messageVo.sender === activeChatUserId) {
                     const nextMsg = render.genMessage(messageVo)
@@ -117,10 +128,7 @@
                 const messageVo = JSON.parse(message.body);
                 const returnId = message.headers['uuid'];
                 const waitObj = waitMessage.find(i => i.sendId === returnId);
-                if (!chatCache[waitObj.receiverId]) {
-                    chatCache[waitObj.receiverId] = []
-                }
-                chatCache[waitObj.receiverId] = [...chatCache[waitObj.receiverId], messageVo];// 新增
+                tool.addMsg(waitObj.receiverId, [messageVo]);// 新增
                 waitMessage = waitMessage.filter(i => i.sendId !== returnId)// 移除
 
                 if (waitObj.receiverId === activeChatUserId) {
@@ -136,11 +144,9 @@
                 switch (message.headers['type']) {
                     case 'Connected' :
                         document.getElementById(message.body).classList.add('online');
-                        console.log(message.body + "上線了");
                         break;
                     case 'Disconnect':
                         document.getElementById(message.body).classList.remove('online');
-                        console.log(message.body + "離線了");
                         break;
                 }
             });

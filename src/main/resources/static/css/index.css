@@ -56,6 +56,10 @@
     overflow-y: auto;
 }
 
+#loadTag {
+    text-align: center;
+}
+
 .message {
     display: flex;
     flex-direction: row;

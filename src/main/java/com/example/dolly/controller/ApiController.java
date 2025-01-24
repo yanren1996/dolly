@@ -34,7 +34,8 @@ public class ApiController {
     }
 
     @GetMapping("/get-chat-history")
-    public HistoryVo getChatHistory(@RequestParam String id, @RequestParam long lastSeq, Authentication auth) {
+    public HistoryVo getChatHistory(@RequestParam String id, @RequestParam long lastSeq, Authentication auth) throws InterruptedException {
+        Thread.sleep(500);
         return chatService.getChatHistory(auth.getName(), id, lastSeq);
     }
 
